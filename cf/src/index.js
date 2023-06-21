@@ -1,5 +1,6 @@
-import os from 'os'
-import fs from 'fs'
+import { process } from '../polyfills.js'
+import { os } from '../polyfills.js'
+import { fs } from '../polyfills.js'
 
 import {
   mergeUserTypes,
