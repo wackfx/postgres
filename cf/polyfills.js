@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { Buffer } from "node:buffer";
+import { md5, sha256 } from './encrypt.js'
 
 const Crypto = globalThis.crypto;
 
@@ -13,15 +14,15 @@ const IPv4Reg = new RegExp(`^${v4Str}$`);
 const v6Seg = "(?:[0-9a-fA-F]{1,4})";
 const IPv6Reg = new RegExp(
   "^(" +
-    `(?:${v6Seg}:){7}(?:${v6Seg}|:)|` +
-    `(?:${v6Seg}:){6}(?:${v4Str}|:${v6Seg}|:)|` +
-    `(?:${v6Seg}:){5}(?::${v4Str}|(:${v6Seg}){1,2}|:)|` +
-    `(?:${v6Seg}:){4}(?:(:${v6Seg}){0,1}:${v4Str}|(:${v6Seg}){1,3}|:)|` +
-    `(?:${v6Seg}:){3}(?:(:${v6Seg}){0,2}:${v4Str}|(:${v6Seg}){1,4}|:)|` +
-    `(?:${v6Seg}:){2}(?:(:${v6Seg}){0,3}:${v4Str}|(:${v6Seg}){1,5}|:)|` +
-    `(?:${v6Seg}:){1}(?:(:${v6Seg}){0,4}:${v4Str}|(:${v6Seg}){1,6}|:)|` +
-    `(?::((?::${v6Seg}){0,5}:${v4Str}|(?::${v6Seg}){1,7}|:))` +
-    ")(%[0-9a-zA-Z-.:]{1,})?$"
+  `(?:${v6Seg}:){7}(?:${v6Seg}|:)|` +
+  `(?:${v6Seg}:){6}(?:${v4Str}|:${v6Seg}|:)|` +
+  `(?:${v6Seg}:){5}(?::${v4Str}|(:${v6Seg}){1,2}|:)|` +
+  `(?:${v6Seg}:){4}(?:(:${v6Seg}){0,1}:${v4Str}|(:${v6Seg}){1,3}|:)|` +
+  `(?:${v6Seg}:){3}(?:(:${v6Seg}){0,2}:${v4Str}|(:${v6Seg}){1,4}|:)|` +
+  `(?:${v6Seg}:){2}(?:(:${v6Seg}){0,3}:${v4Str}|(:${v6Seg}){1,5}|:)|` +
+  `(?:${v6Seg}:){1}(?:(:${v6Seg}){0,4}:${v4Str}|(:${v6Seg}){1,6}|:)|` +
+  `(?::((?::${v6Seg}){0,5}:${v4Str}|(?::${v6Seg}){1,7}|:))` +
+  ")(%[0-9a-zA-Z-.:]{1,})?$"
 );
 
 const textEncoder = new TextEncoder();
@@ -49,8 +50,8 @@ export const crypto = {
     update: (x) => ({
       digest: () => {
         return type === "sha256"
-          ? Crypto.subtle.digest("SHA-256", x)
-          : Crypto.subtle.digest("MD5", x);
+          ? sha256(x)
+          : md5(x.toString('binary'))
       },
     }),
   }),
@@ -79,15 +80,15 @@ export const net = {
     RegExp.prototype.test.call(IPv4Reg, x)
       ? 4
       : RegExp.prototype.test.call(IPv6Reg, x)
-      ? 6
-      : 0,
+        ? 6
+        : 0,
   Socket,
 };
 
 export { setImmediate, clearImmediate };
 
 export const tls = {
-  connect({socket: tcp, servername}) {
+  connect({ socket: tcp, servername }) {
     tcp.writer.releaseLock();
     tcp.reader.releaseLock();
     tcp.readyState = "upgrading";
@@ -125,27 +126,27 @@ async function Socket() {
 
   function connect(port, host) {
     try {
-        tcp.readyState = "opening";
-        tcp.raw = Connect(
-          `${host}:${port}`,
-          tcp.ssl ? { secureTransport: "starttls" } : {}
-        );
-        tcp.raw.closed.then(
-          () => {
-            tcp.readyState !== "upgrade"
-              ? close()
-              : ((tcp.readyState = "open"), tcp.emit("secureConnect"));
-          },
-          (e) => tcp.emit("error", e)
-        );
-        tcp.writer = tcp.raw.writable.getWriter();
-        tcp.reader = tcp.raw.readable.getReader();
+      tcp.readyState = "opening";
+      tcp.raw = Connect(
+        `${host}:${port}`,
+        tcp.ssl ? { secureTransport: "starttls" } : {}
+      );
+      tcp.raw.closed.then(
+        () => {
+          tcp.readyState !== "upgrade"
+            ? close()
+            : ((tcp.readyState = "open"), tcp.emit("secureConnect"));
+        },
+        (e) => tcp.emit("error", e)
+      );
+      tcp.writer = tcp.raw.writable.getWriter();
+      tcp.reader = tcp.raw.readable.getReader();
 
-        tcp.ssl ? readFirst() : read();
-        tcp.writer.ready.then(() => {
-          tcp.readyState = "open";
-          tcp.emit("connect");
-        });
+      tcp.ssl ? readFirst() : read();
+      tcp.writer.ready.then(() => {
+        tcp.readyState = "open";
+        tcp.emit("connect");
+      });
     } catch (err) {
       error(err)
     }
