@@ -439,9 +439,8 @@ if (md5('hello') != '5d41402abc4b2a76b9719d911017c592') {
 */
 
 const sha256 = (x) => {
-  return Crypto.subtle.digest("SHA-256", textEncoder.encode(x)).then((digest) =>
-    Array.from(new Uint8Array(digest))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-  )
+  let message = x
+  if (!(x instanceof Uint8Array))
+    message = textEncoder.encode(x)
+  return Crypto.subtle.digest("SHA-256", message)
 }
