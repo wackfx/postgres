@@ -429,7 +429,9 @@ function Connection(options, queues = {}, { onopen = noop, onend = noop, onclose
     lifeTimer.cancel()
     connectTimer.cancel()
 
-    socket.removeAllListeners()
+    if (!terminated)
+      socket.removeAllListeners()
+
     socket = null
 
     if (initial)
